@@ -1,0 +1,14 @@
+{
+  "plug": "rknn-person",
+  "notice": "RK3588 RKNN YOLOv8 person detector",
+  "host": "127.0.0.1",
+  "port": 8080,
+  "https": false,
+  "key": "FROM_ENV",
+  "model_path": "/models/yolov8.rknn",
+  "person_threshold": 0.50,
+  "nms_threshold": 0.45,
+  "input_size": 640,
+  "queue_size": 4,
+  "return_frame": true
+}
