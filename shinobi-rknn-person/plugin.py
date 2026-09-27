@@ -159,8 +159,13 @@ class PersonDetector:
         rgb = cv2.cvtColor(padded, cv2.COLOR_BGR2RGB)
 
         started = time.perf_counter()
-        outputs = self.rknn.inference(inputs=[rgb])
+        # RKNNLite requires an explicit batch dimension for this static model.
+        # Input shape must be 1xHxWxC, not HxWxC.
+        batched = np.expand_dims(rgb, axis=0)
+        outputs = self.rknn.inference(inputs=[batched])
         inference_ms = (time.perf_counter() - started) * 1000.0
+        if outputs is None:
+            raise RuntimeError("RKNN inference returned no outputs")
 
         boxes, scores = self._postprocess_person(outputs)
         matrices = []
