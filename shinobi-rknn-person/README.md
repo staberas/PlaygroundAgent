@@ -129,3 +129,84 @@ The RK3588 test model was stable at about 25 ms per inference, so this target wo
 - Preprocessing uses black letterboxing to match Rockchip's YOLOv8 model-zoo path.
 - NMS is performed only for person boxes.
 - The first validation is intentionally bare-metal. After a real Shinobi event works for one camera, add the second camera, then containerize the same process for K3s.
+
+
+## K3s deployment
+
+The production-shaped deployment pins the detector to `radxa-cm5-io` and keeps Shinobi itself outside the cluster on the LAN.
+
+### Build the ARM64 image on radxa-cm5-io
+
+Pull the current branch first:
+
+```bash
+cd ~/PlaygroundAgent
+git checkout feature/shinobi-rknn-detector
+git pull
+cd shinobi-rknn-person
+```
+
+If Docker is installed:
+
+```bash
+sudo docker build -t shinobi-rknn-person:local .
+sudo docker save shinobi-rknn-person:local -o /tmp/shinobi-rknn-person.tar
+sudo k3s ctr images import /tmp/shinobi-rknn-person.tar
+```
+
+If Podman is installed instead:
+
+```bash
+podman build -t shinobi-rknn-person:local .
+podman save --format docker-archive -o /tmp/shinobi-rknn-person.tar shinobi-rknn-person:local
+sudo k3s ctr images import /tmp/shinobi-rknn-person.tar
+```
+
+Verify that K3s sees it:
+
+```bash
+sudo k3s ctr images list | grep shinobi-rknn-person
+```
+
+### Create the Secret
+
+```bash
+cd ~/PlaygroundAgent/shinobi-rknn-person/k8s
+cp secret.example.yaml secret.yaml
+nano secret.yaml
+```
+
+Put the exact plugin key already paired with Shinobi into `SHINOBI_PLUGIN_KEY`.
+
+The Secret file is gitignored.
+
+### Deploy
+
+```bash
+chmod +x deploy.sh
+./deploy.sh
+```
+
+Then follow logs:
+
+```bash
+kubectl -n shinobi-ai logs -f deployment/shinobi-rknn-person
+```
+
+Expected output includes the RKNN runtime/driver information, followed by:
+
+```
+[shinobi] connected to 192.168.192.162:8080
+[detect] GROUP/MONITOR person x1 [0.87] 22.0 ms
+```
+
+### Why hostPath is used
+
+This first K3s deployment deliberately reuses the already-proven host installation:
+
+- `/usr/lib/python3/dist-packages/rknnlite`
+- `/usr/lib/aarch64-linux-gnu` for `librknnrt`
+- `/dev/dri` for the RK3588 RKNPU DRM device
+- the already-converted `yolov8.rknn`
+
+That minimizes variables. Once the pod is proven, those runtime files can be baked into a dedicated image and the security context narrowed.
