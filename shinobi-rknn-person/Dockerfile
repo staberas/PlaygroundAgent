@@ -13,7 +13,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 COPY requirements-container.txt .
-RUN pip install -r requirements-container.txt
+RUN python -m pip install --upgrade pip && \
+    python -m pip install -r requirements-container.txt && \
+    python -c "import cv2, numpy, socketio; print('OpenCV', cv2.__version__); print('NumPy', numpy.__version__)"
 
 COPY plugin.py /app/plugin.py
 COPY config.container.json /app/config.json
