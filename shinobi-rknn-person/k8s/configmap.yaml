@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shinobi-rknn-person
+  namespace: shinobi-ai
+data:
+  SHINOBI_HOST: "192.168.192.162"
+  SHINOBI_PORT: "8080"
+  RKNN_MODEL_PATH: "/models/yolov8.rknn"
+  PERSON_THRESHOLD: "0.50"
+  NMS_THRESHOLD: "0.45"
+  RKNN_INPUT_SIZE: "640"
+  DETECTOR_QUEUE_SIZE: "4"
