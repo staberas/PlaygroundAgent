@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import json
+import os
 import queue
 import signal
 import threading
@@ -367,6 +368,27 @@ class ShinobiRKNNPlugin:
 def load_config(path):
     with open(path, "r", encoding="utf-8") as handle:
         config = json.load(handle)
+
+    env_overrides = {
+        "host": os.getenv("SHINOBI_HOST"),
+        "port": os.getenv("SHINOBI_PORT"),
+        "key": os.getenv("SHINOBI_PLUGIN_KEY"),
+        "model_path": os.getenv("RKNN_MODEL_PATH"),
+        "person_threshold": os.getenv("PERSON_THRESHOLD"),
+        "nms_threshold": os.getenv("NMS_THRESHOLD"),
+        "input_size": os.getenv("RKNN_INPUT_SIZE"),
+        "queue_size": os.getenv("DETECTOR_QUEUE_SIZE"),
+    }
+    for name, value in env_overrides.items():
+        if value not in (None, ""):
+            config[name] = value
+
+    for name in ("port", "input_size", "queue_size"):
+        if name in config:
+            config[name] = int(config[name])
+    for name in ("person_threshold", "nms_threshold"):
+        if name in config:
+            config[name] = float(config[name])
 
     required = ("host", "port", "key", "model_path")
     missing = [name for name in required if not config.get(name)]
