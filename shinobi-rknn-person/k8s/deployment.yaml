@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shinobi-rknn-person
+  namespace: shinobi-ai
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: shinobi-rknn-person
+  template:
+    metadata:
+      labels:
+        app: shinobi-rknn-person
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: radxa-cm5-io
+      containers:
+        - name: detector
+          image: shinobi-rknn-person:local
+          imagePullPolicy: Never
+          envFrom:
+            - configMapRef:
+                name: shinobi-rknn-person
+            - secretRef:
+                name: shinobi-rknn-person
+          env:
+            - name: PYTHONPATH
+              value: /opt/rknn-python
+            - name: LD_LIBRARY_PATH
+              value: /opt/rknn-lib
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: model
+              mountPath: /models/yolov8.rknn
+              readOnly: true
+            - name: rknn-python
+              mountPath: /opt/rknn-python/rknnlite
+              readOnly: true
+            - name: rknn-libs
+              mountPath: /opt/rknn-lib
+              readOnly: true
+            - name: dri
+              mountPath: /dev/dri
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "2"
+              memory: "1Gi"
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - "kill -0 1"
+            initialDelaySeconds: 20
+            periodSeconds: 30
+      volumes:
+        - name: model
+          hostPath:
+            path: /home/stabpi3/rknn_model_zoo/examples/yolov8/model/yolov8.rknn
+            type: File
+        - name: rknn-python
+          hostPath:
+            path: /usr/lib/python3/dist-packages/rknnlite
+            type: Directory
+        - name: rknn-libs
+          hostPath:
+            path: /usr/lib/aarch64-linux-gnu
+            type: Directory
+        - name: dri
+          hostPath:
+            path: /dev/dri
+            type: Directory
