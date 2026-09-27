@@ -19,7 +19,7 @@ spec:
         kubernetes.io/hostname: radxa-cm5-io
       containers:
         - name: detector
-          image: shinobi-rknn-person:local
+          image: localhost/shinobi-rknn-person:local
           imagePullPolicy: Never
           envFrom:
             - configMapRef:
