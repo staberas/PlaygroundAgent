@@ -26,11 +26,6 @@ spec:
                 name: shinobi-rknn-person
             - secretRef:
                 name: shinobi-rknn-person
-          env:
-            - name: PYTHONPATH
-              value: /opt/rknn-python
-            - name: LD_LIBRARY_PATH
-              value: /opt/rknn-lib
           securityContext:
             privileged: true
           volumeMounts:
@@ -38,10 +33,13 @@ spec:
               mountPath: /models/yolov8.rknn
               readOnly: true
             - name: rknn-python
-              mountPath: /opt/rknn-python/rknnlite
+              mountPath: /usr/local/lib/python3.11/site-packages/rknnlite
               readOnly: true
-            - name: rknn-libs
-              mountPath: /opt/rknn-lib
+            - name: librknnrt
+              mountPath: /usr/lib/aarch64-linux-gnu/librknnrt.so
+              readOnly: true
+            - name: librknn-api
+              mountPath: /usr/lib/aarch64-linux-gnu/librknn_api.so
               readOnly: true
             - name: dri
               mountPath: /dev/dri
@@ -69,10 +67,14 @@ spec:
           hostPath:
             path: /usr/lib/python3/dist-packages/rknnlite
             type: Directory
-        - name: rknn-libs
+        - name: librknnrt
           hostPath:
-            path: /usr/lib/aarch64-linux-gnu
-            type: Directory
+            path: /usr/lib/aarch64-linux-gnu/librknnrt.so
+            type: File
+        - name: librknn-api
+          hostPath:
+            path: /usr/lib/aarch64-linux-gnu/librknn_api.so
+            type: File
         - name: dri
           hostPath:
             path: /dev/dri
