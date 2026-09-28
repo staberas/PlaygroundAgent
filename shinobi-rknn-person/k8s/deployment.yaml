@@ -19,7 +19,7 @@ spec:
         kubernetes.io/hostname: radxa-cm5-io
       containers:
         - name: detector
-          image: localhost/shinobi-rknn-person:local
+          image: localhost/shinobi-rknn-person:v3
           imagePullPolicy: Never
           envFrom:
             - configMapRef:
@@ -36,10 +36,10 @@ spec:
               mountPath: /usr/local/lib/python3.11/site-packages/rknnlite
               readOnly: true
             - name: librknnrt
-              mountPath: /usr/lib/aarch64-linux-gnu/librknnrt.so
+              mountPath: /usr/lib/librknnrt.so
               readOnly: true
             - name: librknn-api
-              mountPath: /usr/lib/aarch64-linux-gnu/librknn_api.so
+              mountPath: /usr/lib/librknn_api.so
               readOnly: true
             - name: dri
               mountPath: /dev/dri
