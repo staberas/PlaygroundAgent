@@ -1,0 +1,7 @@
+# Stage-specific dependencies; installer uses these individual groups.
+# nudenet: nudenet>=3.4,<4 ; onnxruntime ; pillow
+# yolo: ultralytics ; pillow
+# ocr: easyocr
+# nsfw: tensorflow ; pillow ; numpy
+# caption: torch ; transformers==4.51.0 ; accelerate ; sentencepiece ; pillow
+# Caption requirements are particularly model/GPU/platform dependent.
