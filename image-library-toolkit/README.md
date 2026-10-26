@@ -83,3 +83,16 @@ The 54-image log showed NSFW model deserialization failing with `Unknown layer: 
 ```
 
 The runner now stops after the first model-initialization error instead of logging the same error for each image.
+
+### Marqo detector (SFW/NSFW)
+
+Uses the official [Marqo/nsfw-image-detection-384](https://huggingface.co/Marqo/nsfw-image-detection-384) model via `timm`. The model is cached automatically in the Hugging Face cache on first use; no manual naming required. Install/download once:
+
+```powershell
+.\.venv\Scripts\python.exe setup_envs.py --marqo
+.\.venv\Scripts\python.exe install_models.py --marqo
+.\.venv\Scripts\python.exe app.py run marqo
+.\.venv\Scripts\python.exe app.py rules
+```
+
+Outputs JSON probabilities `{"NSFW": ..., "SFW": ...}` into the new `marqo` CSV column. The review rules flag Marqo NSFW >= 0.75 as **suggestive/review**, not automatically explicit, alongside the previous NudeNet and legacy NSFW checks. For repeat scans, completed rows are skipped unless `--force` is used. Marqo's scores are not calibrated against your dataset; visually review disagreements.
