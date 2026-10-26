@@ -65,7 +65,7 @@ def rules(csv_path):
     for row in rows:
         nude = {}
         try:
-            nude = json.loads(row.get("nude", "") or "{}")
+            nude = json.loads(row.get("nude", "") or row.get("nudenet", "") or "{}")
         except (ValueError, TypeError):
             pass
         nsfw = {}
@@ -73,9 +73,9 @@ def rules(csv_path):
             nsfw = json.loads(row.get("nsfw", "") or "{}")
         except (ValueError, TypeError):
             pass
-        has_analysis = bool(row.get("nude", "").strip() or row.get("nsfw", "").strip())
-        explicit = bool(nude.get("nude")) or max(float(nsfw.get("porn", 0)), float(nsfw.get("hentai", 0))) >= .65
-        suggestive = bool(nude.get("sexy")) or float(nsfw.get("sexy", 0)) >= .60
+        has_analysis = bool(row.get("nude", "").strip() or row.get("nudenet", "").strip() or row.get("nsfw", "").strip())
+        explicit = bool(nude.get("nude")) or any(d.get("class") in {"FEMALE_BREAST_EXPOSED","FEMALE_GENITALIA_EXPOSED","MALE_GENITALIA_EXPOSED","BUTTOCKS_EXPOSED","ANUS_EXPOSED"} for d in nude.get("detections", [])) or max(float(nsfw.get("porn", 0)), float(nsfw.get("hentai", 0))) >= .65
+        suggestive = bool(nude.get("sexy")) or any(d.get("class") in {"FEMALE_BREAST_COVERED","FEMALE_GENITALIA_COVERED","BUTTOCKS_COVERED"} for d in nude.get("detections", [])) or float(nsfw.get("sexy", 0)) >= .60
         output.append({"path": row.get("path", ""), "review": "explicit" if explicit else "suggestive" if suggestive else "unclassified" if not has_analysis else "not_flagged", "caption": row.get("caption", "")})
     target = Path(csv_path).with_suffix(".rules.json")
     target.write_text(json.dumps(output, ensure_ascii=False, indent=2), encoding="utf-8")
