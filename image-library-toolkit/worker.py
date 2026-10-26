@@ -42,8 +42,22 @@ def infer(stage, path, config, cache):
     if stage == "ocr":
         if "engine" not in cache:
             import easyocr
-            cache["engine"] = easyocr.Reader(["en"], gpu=False)
-        return json.dumps(cache["engine"].readtext(str(path), detail=0), ensure_ascii=False)
+            mode = str(settings.get("ocr_gpu", "auto")).lower()
+            import torch
+            use_gpu = torch.cuda.is_available() if mode == "auto" else mode in ("true", "1", "cuda")
+            if use_gpu and not torch.cuda.is_available():
+                raise RuntimeError("OCR CUDA requested but unavailable in this PyTorch installation")
+            cache["engine"] = easyocr.Reader(settings.get("ocr_languages", ["en"]), gpu=use_gpu)
+            print("OCR backend: " + ("CUDA GPU" if use_gpu else "CPU") + " (torch " + torch.__version__ + ")", flush=True)
+        return json.dumps(cache["engine"].readtext(
+            str(path), detail=0, paragraph=False,
+            decoder="greedy", batch_size=int(settings.get("ocr_batch_size", 4)),
+            canvas_size=int(settings.get("ocr_canvas_size", 1280)),
+            mag_ratio=float(settings.get("ocr_mag_ratio", 1.0)),
+            text_threshold=float(settings.get("ocr_text_threshold", 0.7)),
+            low_text=float(settings.get("ocr_low_text", 0.4)),
+            link_threshold=float(settings.get("ocr_link_threshold", 0.4)),
+        ), ensure_ascii=False)
     if stage == "nsfw":
         import numpy as np
         from PIL import Image
@@ -108,39 +122,61 @@ def infer(stage, path, config, cache):
         with torch.inference_mode():
             probabilities = cache["engine"](tensor).softmax(dim=-1)[0].cpu().tolist()
         return json.dumps(dict(zip(cache["labels"], map(float, probabilities))), ensure_ascii=False)
-    if stage == "caption":
-        if "engine" not in cache:
-            import torch
-            from transformers import LlavaForConditionalGeneration, AutoProcessor
-            model_dir = normalize_path(models.get("caption", "models/joycaption"))
-            if not model_dir.exists():
-                raise FileNotFoundError(f"Caption model not found: {model_dir}")
-            processor = AutoProcessor.from_pretrained(str(model_dir))
-            dtype = torch.float16 if torch.cuda.is_available() else torch.float32
-            model = LlavaForConditionalGeneration.from_pretrained(str(model_dir), torch_dtype=dtype, device_map="auto")
-            model.eval()
-            cache["engine"], cache["processor"] = model, processor
+    if stage == "smilingwolf":
+        import csv
         import torch
-        from PIL import Image
-        model, processor = cache["engine"], cache["processor"]
-        prompt = settings.get("caption_prompt", "Describe the image.")
-        # JoyCaption Alpha Two uses a simple string in its LLaVA chat template.
-        # A list of multimodal content blocks causes Jinja UndefinedError:
-        # 'list object' has no attribute 'replace'.
-        conversation = [{"role": "user", "content": prompt}]
-        text = processor.apply_chat_template(conversation, tokenize=False, add_generation_prompt=True)
+        import timm
+        from huggingface_hub import hf_hub_download
+        from PIL import Image, ImageOps
+        if "engine" not in cache:
+            repo = "SmilingWolf/wd-vit-tagger-v3"
+            model = timm.create_model("hf_hub:" + repo, pretrained=True).eval()
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+            model = model.to(device)
+            labels_path = hf_hub_download(repo_id=repo, filename="selected_tags.csv")
+            with open(labels_path, newline="", encoding="utf-8") as stream:
+                tags = list(csv.DictReader(stream))
+            cache["labels"] = [r["name"] for r in tags]
+            cache["categories"] = [int(r["category"]) for r in tags]
+            cache["device"] = device
+            cache["transform"] = timm.data.create_transform(
+                **timm.data.resolve_model_data_config(model), is_training=False
+            )
+            cache["engine"] = model
         with Image.open(path) as source:
-            image = source.convert("RGB")
-            inputs = processor(text=[text], images=[image], return_tensors="pt").to(model.device)
+            img = ImageOps.exif_transpose(source).convert("RGB")
+            size = max(img.size)
+            canvas = Image.new("RGB", (size, size), (255, 255, 255))
+            canvas.paste(img, ((size - img.width)//2, (size - img.height)//2))
+            tensor = cache["transform"](canvas).unsqueeze(0).to(cache["device"])
         with torch.inference_mode():
-            ids = model.generate(**inputs, max_new_tokens=int(settings.get("caption_max_tokens", 160)), do_sample=False)
-        generated = ids[:, inputs["input_ids"].shape[-1]:]
-        return processor.batch_decode(generated, skip_special_tokens=True)[0].strip()
+            scores = cache["engine"](tensor).sigmoid()[0].cpu().tolist()
+        if len(scores) != len(cache["labels"]):
+            raise RuntimeError("Tag count mismatch: %d outputs, %d labels" % (len(scores), len(cache["labels"])))
+        ratings, general, characters = {}, [], []
+        threshold = float(settings.get("smilingwolf_tag_threshold", 0.26))
+        char_threshold = float(settings.get("smilingwolf_character_threshold", 0.75))
+        for name, category, score in zip(cache["labels"], cache["categories"], scores):
+            score = float(score)
+            if category == 9:
+                ratings[name] = score
+            elif category == 4 and score >= char_threshold:
+                characters.append({"tag": name, "score": round(score, 5)})
+            elif category == 0 and score >= threshold:
+                general.append({"tag": name, "score": round(score, 5)})
+        general.sort(key=lambda item: item["score"], reverse=True)
+        characters.sort(key=lambda item: item["score"], reverse=True)
+        return json.dumps({
+            "ratings": ratings,
+            "general_tags": general[:50],
+            "character_tags": characters[:20],
+            "model": "SmilingWolf/wd-vit-tagger-v3"
+        }, ensure_ascii=False)
     raise ValueError("Unknown stage: " + stage)
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("stage", choices=["nudenet", "yolo", "ocr", "nsfw", "marqo", "caption"])
+    ap.add_argument("stage", choices=["nudenet", "yolo", "ocr", "nsfw", "marqo", "smilingwolf"])
     ap.add_argument("--csv", required=True)
     ap.add_argument("--force", action="store_true")
     args = ap.parse_args()
