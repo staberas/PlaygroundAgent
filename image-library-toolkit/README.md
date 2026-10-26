@@ -54,3 +54,21 @@ Optionally pass `--csv /path/to/imgscan.csv` before a subcommand and `--force` o
 ## Caveats
 
 This is an engineering rebuild based on the two ZIPs; models were omitted from the uploads, so end-to-end inference **has not been verified** against your model weights. NudeNet flags are heuristic summaries of scored detections, not reliable human labels. Artistic/illustrated images can be misclassified. For best results, compare NSFWJS, NudeNet and captions, inspect low-confidence cases, and keep a manual review step. Do not use model results as proof of age or consent.
+
+## Installing models and fixing existing CSVs (October 2026)
+
+Update this folder from GitHub first. NudeNet already includes its ONNX weights in the `nudenet` pip package; its model **does not** need an additional download. Install/reinstall that environment with `python setup_envs.py --nudenet`.
+
+For the five-category NSFW model (legacy GantMan MobileNet v2), download the verified upstream filename to the configured path:
+
+```powershell
+.\.venv\Scripts\python.exe setup_envs.py --nsfw
+.\.venv\Scripts\python.exe install_models.py --nsfw --nudenet
+.\.venv\Scripts\python.exe app.py run nsfw
+.\.venv\Scripts\python.exe app.py run nudenet --force
+.\.venv\Scripts\python.exe app.py rules
+```
+
+The installer sources NSFW weights from the original maintainer's historical S3 URL. Keep `models/nsfw_mobilenet2.224x224.h5` out of Git. This is an older Keras/HDF5 model and modern TensorFlow/Keras installations **may reject its serialization**; in that case capture the traceback so we can pin a compatible version, rather than changing model formats blindly.
+
+**Existing CSV migration:** Older runs wrote NudeNet output under the unintended `nudenet` column while rules only read `nude`. The rules now read both, preferring `nude`. Fresh NudeNet runs write to `nude` and `--force` recomputes them. Previously exported `.rules.json` is stale until you run `app.py rules` again. In the uploaded 48-row sample, `nudenet` contains 48 populated results while `nude` and `nsfw` are entirely empty.
