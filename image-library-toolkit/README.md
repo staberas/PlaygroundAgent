@@ -113,3 +113,11 @@ This uses [SmilingWolf/wd-vit-tagger-v3](https://huggingface.co/SmilingWolf/wd-v
 ## Faster OCR
 
 By default OCR uses CUDA GPU **only when the installed torch supports CUDA**, otherwise CPU. A normal AMD Radeon GPU on Windows does **not** enable CUDA, so CPU fallback is expected. To see the selected backend run `app.py run ocr --force`; the worker prints it at startup. OCR settings in `config.json`: `ocr_gpu` ("auto", "false", "true"), `ocr_canvas_size` (1280 by default vs EasyOCR's larger standard), `ocr_batch_size` (4), `ocr_mag_ratio` (1.0), and OCR detection thresholds. Reducing the canvas size accelerates processing of large images but may miss very small text. For NVIDIA CUDA, install CUDA-enabled PyTorch *inside* `.venvs/ocr` following [official EasyOCR installation](https://jaided.ai/easyocr/install/). Re-run OCR with `--force` to benchmark changed settings against existing entries.
+
+## Automatic folder assignment (no file moves)
+
+Run `python app.py assign` or click **Assign folders**. Routes each unignored image to exactly one suggested destination: `SFW/{Cosplay,General,Anime,Meme}` or `NSFW/{Cosplay,General,Anime,Meme}`. Writes `destination_folder`, `route_review`, `route_confidence` and `route_reason` into the CSV. The system **does not create folders, move files or rename them**. Double-click `destination_folder` in the table to override manually; CLI `assign --force` recalculates existing suggestions. The GUI's Assign folders button explicitly recomputes suggestions.
+
+Routing uses available existing scores from NudeNet, legacy NSFW classifier, Marqo and WD Tagger. Explicit anatomy, strong WD explicit/questionable ratings, and agreement across models weigh more than Marqo alone. For borderline or conflicting predictions, `route_review=yes` requests inspection. Subcategory classification relies on high-confidence relevant WD tags; cosplay requires costume/photo evidence, memes require text/screenshot or meme evidence, and anime uses character/illustration signals. Remaining images default to General.
+
+This is a **heuristic prototype**; thresholds were not statistically calibrated. `route_confidence` is a heuristic ranking, **not a probability**. Always manually review decisions before building a future file mover; even `SFW` predictions can contain mistakes. Existing CSV data and legacy columns are retained.
