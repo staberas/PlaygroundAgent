@@ -57,7 +57,12 @@ def infer(stage, path, config, cache):
                 engine.allocate_tensors()
                 cache["input"], cache["output"] = engine.get_input_details()[0], engine.get_output_details()[0]
             else:
-                engine = tf.keras.models.load_model(str(model_path), compile=False)
+                import tensorflow_hub as hub
+                engine = tf.keras.models.load_model(
+                    str(model_path),
+                    custom_objects={"KerasLayer": hub.KerasLayer},
+                    compile=False,
+                )
             cache["engine"] = engine
         im = Image.open(path).convert("RGB").resize((224, 224))
         x = np.asarray(im, dtype=np.float32)
@@ -139,6 +144,9 @@ def main():
         except Exception as exc:
             failed += 1
             print(f"[{index}/{len(rows)}] ERROR: {path}: {type(exc).__name__}: {exc}", flush=True)
+            if args.stage == "nsfw" and "engine" not in cache:
+                print("NSFW model failed to initialize; stopping instead of repeating the error for every image.", flush=True)
+                break
         write_rows(csv_path, rows, columns)
     print(f"Finished {args.stage}: {processed} processed, {failed} failures", flush=True)
     if failed:
