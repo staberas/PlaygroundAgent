@@ -6,6 +6,7 @@ import sys
 import threading
 from pathlib import Path
 from pipeline import ROOT, COLUMNS, read_rows, write_rows, scan, rules
+from sorter import assign
 
 DEFAULT_CSV = ROOT / "imgscan.csv"
 STAGES = ("nudenet", "yolo", "ocr", "nsfw", "marqo", "smilingwolf")
@@ -60,7 +61,7 @@ def gui(csv_path):
     table = ttk.Treeview(container, columns=COLUMNS, show="headings", selectmode="browse")
     for col in COLUMNS:
         table.heading(col, text=col)
-        table.column(col, width=220 if col in ("path", "caption") else 105, stretch=False)
+        table.column(col, width=220 if col in ("path", "destination_folder", "route_reason") else 105, stretch=False)
     yscroll = ttk.Scrollbar(container, orient="vertical", command=table.yview)
     xscroll = ttk.Scrollbar(container, orient="horizontal", command=table.xview)
     table.configure(yscrollcommand=yscroll.set, xscrollcommand=xscroll.set)
@@ -112,6 +113,14 @@ def gui(csv_path):
     run_button = ttk.Button(controls, text="Run stage", command=job)
     run_button.pack(side="left", padx=6)
     ttk.Button(controls, text="Refresh", command=refresh).pack(side="left")
+    def do_assign():
+        try:
+            count = assign(csv_path, force=True)
+            refresh()
+            note(f"Updated {count} destination suggestions. No files moved.")
+        except Exception as exc:
+            messagebox.showerror("Assignment failed", str(exc))
+    ttk.Button(controls, text="Assign folders", command=do_assign).pack(side="left", padx=6)
     def produce_rules():
         try:
             note(f"Rules written to {rules(csv_path)}")
@@ -127,7 +136,7 @@ def gui(csv_path):
         if index < 0 or index >= len(COLUMNS):
             return
         field = COLUMNS[index]
-        if field not in ("ignore", "new_file_name", "other"):
+        if field not in ("ignore", "new_file_name", "destination_folder", "route_review", "other"):
             return
         rows, columns = read_rows(csv_path)
         rowidx = int(item)
@@ -159,6 +168,8 @@ def main():
     rn.add_argument("--force", action="store_true")
     commands.add_parser("status")
     commands.add_parser("rules")
+    sorter = commands.add_parser("assign")
+    sorter.add_argument("--force", action="store_true", help="Recompute existing suggestions")
     commands.add_parser("gui")
     args = ap.parse_args()
     csv_path = args.csv.resolve()
@@ -166,6 +177,8 @@ def main():
         print(f"Scanned {scan(args.folder, csv_path, args.recursive)} images => {csv_path}")
     elif args.action == "run":
         run(args.stage, csv_path, args.force)
+    elif args.action == "assign":
+        print(f"Assigned {assign(csv_path, args.force)} destination suggestions (no files moved)")
     elif args.action == "rules":
         print(rules(csv_path))
     elif args.action == "status":
