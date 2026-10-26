@@ -8,7 +8,7 @@ from pathlib import Path
 from pipeline import ROOT, COLUMNS, read_rows, write_rows, scan, rules
 
 DEFAULT_CSV = ROOT / "imgscan.csv"
-STAGES = ("nudenet", "yolo", "ocr", "nsfw", "caption")
+STAGES = ("nudenet", "yolo", "ocr", "nsfw", "marqo", "caption")
 
 def interpreter(stage):
     config = json.loads((ROOT / "config.json").read_text(encoding="utf-8"))
