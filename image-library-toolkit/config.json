@@ -4,18 +4,28 @@
     "yolo": ".venvs/yolo",
     "ocr": ".venvs/ocr",
     "nsfw": ".venvs/nsfw",
-    "caption": ".venvs/caption",
-    "marqo": ".venvs/marqo"
+    "marqo": ".venvs/marqo",
+    "smilingwolf": ".venvs/smilingwolf"
   },
   "models": {
     "yolo": "models/yolo.pt",
-    "nsfw": "models/nsfw_mobilenet2.224x224.h5",
-    "caption": "models/joycaption"
+    "nsfw": "models/nsfw_mobilenet2.224x224.h5"
   },
   "settings": {
     "nudenet_threshold": 0.35,
-    "caption_prompt": "Describe this image in one detailed, factual sentence. Avoid introductory phrases.",
-    "caption_max_tokens": 160,
-    "marqo_threshold": 0.5
+    "marqo_threshold": 0.5,
+    "smilingwolf_tag_threshold": 0.26,
+    "smilingwolf_character_threshold": 0.75,
+    "smilingwolf_rating_review_threshold": 0.5,
+    "ocr_gpu": "auto",
+    "ocr_languages": [
+      "en"
+    ],
+    "ocr_canvas_size": 1280,
+    "ocr_mag_ratio": 1,
+    "ocr_batch_size": 4,
+    "ocr_text_threshold": 0.7,
+    "ocr_low_text": 0.4,
+    "ocr_link_threshold": 0.4
   }
 }
