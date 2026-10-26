@@ -6,7 +6,7 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-COLUMNS = ["path", "filename", "extension", "ignore", "yolo", "nude", "nsfw", "marqo", "ocr", "smilingwolf", "new_file_name", "other"]
+COLUMNS = ["path", "filename", "extension", "ignore", "yolo", "nude", "nsfw", "marqo", "ocr", "smilingwolf", "destination_folder", "route_review", "route_confidence", "route_reason", "new_file_name", "other"]
 EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif", ".tiff", ".tif"}
 
 def normalize_path(value):
