@@ -25,7 +25,7 @@ def install_nsfw():
         if tmp.stat().st_size < 1000000:
             raise RuntimeError("Download seems incomplete")
         with tmp.open("rb") as stream:
-            if stream.read(8) != b"\\x89HDF\\r\\n\\x1a\\n":
+            if stream.read(8) != bytes.fromhex("894844460d0a1a0a"):
                 raise RuntimeError("Downloaded model is not an HDF5 file")
         tmp.replace(dest)
         print(f"Installed: {dest} ({dest.stat().st_size:,} bytes)")
