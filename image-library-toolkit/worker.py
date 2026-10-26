@@ -124,7 +124,10 @@ def infer(stage, path, config, cache):
         from PIL import Image
         model, processor = cache["engine"], cache["processor"]
         prompt = settings.get("caption_prompt", "Describe the image.")
-        conversation = [{"role": "user", "content": [{"type": "image"}, {"type": "text", "text": prompt}]}]
+        # JoyCaption Alpha Two uses a simple string in its LLaVA chat template.
+        # A list of multimodal content blocks causes Jinja UndefinedError:
+        # 'list object' has no attribute 'replace'.
+        conversation = [{"role": "user", "content": prompt}]
         text = processor.apply_chat_template(conversation, tokenize=False, add_generation_prompt=True)
         with Image.open(path) as source:
             image = source.convert("RGB")
