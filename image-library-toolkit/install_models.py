@@ -38,13 +38,22 @@ def main():
     parser.add_argument("--nsfw", action="store_true", help="Download legacy NSFW MobileNet .h5")
     parser.add_argument("--nudenet", action="store_true", help="Confirm NudeNet bundled model is managed by the package")
     parser.add_argument("--marqo", action="store_true", help="Cache official Marqo model weights via Hugging Face")
+    parser.add_argument("--smilingwolf", action="store_true", help="Cache WD ViT Tagger v3 weights and tag labels")
     args = parser.parse_args()
-    if not args.nsfw and not args.nudenet and not args.marqo:
+    if not args.nsfw and not args.nudenet and not args.marqo and not args.smilingwolf:
         parser.error("Choose --nsfw and/or --nudenet")
     if args.nudenet:
         print("NudeNet 320n.onnx is bundled within the nudenet package. Run setup_envs.py --nudenet to install it.")
     if args.nsfw:
         install_nsfw()
+    if args.smilingwolf:
+        import subprocess
+        import sys
+        exe = ROOT / ".venvs" / "smilingwolf" / ("Scripts/python.exe" if sys.platform == "win32" else "bin/python")
+        if not exe.exists():
+            raise FileNotFoundError(f"Install SmilingWolf environment first: {exe}")
+        subprocess.run([str(exe), "-c",
+            'import timm; from huggingface_hub import hf_hub_download; r="SmilingWolf/wd-vit-tagger-v3"; timm.create_model("hf_hub:"+r,pretrained=True); print(hf_hub_download(repo_id=r,filename="selected_tags.csv")); print("SmilingWolf cached")'], check=True)
     if args.marqo:
         import subprocess
         import sys
