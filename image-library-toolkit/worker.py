@@ -19,8 +19,8 @@ def infer(stage, path, config, cache):
         names = [str(d.get("class", "")) for d in dets]
         return json.dumps({
             "person": any("FACE" in n or "PERSON" in n for n in names),
-            "sexy": any(n.startswith(("COVERED_", "EXPOSED_")) for n in names),
-            "nude": any(n.startswith("EXPOSED_") for n in names),
+            "sexy": any(n.endswith(("_COVERED", "_EXPOSED")) and not n.startswith(("FEET_", "ARMPITS_", "BELLY_")) for n in names),
+            "nude": any(n.endswith("_EXPOSED") and n.startswith(("FEMALE_BREAST_", "FEMALE_GENITALIA_", "MALE_GENITALIA_", "BUTTOCKS_", "ANUS_")) for n in names),
             "top_classes": [d.get("class") for d in sorted(dets, key=lambda d: float(d.get("score", 0)), reverse=True)[:3]],
             "detections": dets,
         }, ensure_ascii=False)
@@ -48,7 +48,7 @@ def infer(stage, path, config, cache):
         import numpy as np
         from PIL import Image
         if "engine" not in cache:
-            model_path = normalize_path(models.get("nsfw", "models/nsfw_mobilenet2.224x224.tflite"))
+            model_path = normalize_path(models.get("nsfw", "models/nsfw_mobilenet2.224x224.h5"))
             if not model_path.exists():
                 raise FileNotFoundError(f"NSFW model not found: {model_path}")
             import tensorflow as tf
@@ -60,7 +60,12 @@ def infer(stage, path, config, cache):
                 engine = tf.keras.models.load_model(str(model_path), compile=False)
             cache["engine"] = engine
         im = Image.open(path).convert("RGB").resize((224, 224))
-        x = np.asarray(im, dtype=np.float32) / 255.0
+        x = np.asarray(im, dtype=np.float32)
+        if "input" not in cache:
+            from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
+            x = preprocess_input(x)
+        else:
+            x = x / 255.0
         x = np.expand_dims(x, 0)
         engine = cache["engine"]
         if "input" in cache:
@@ -116,17 +121,18 @@ def main():
     config = json.loads((Path(__file__).resolve().parent / "config.json").read_text(encoding="utf-8"))
     csv_path = Path(args.csv).resolve()
     rows, columns = read_rows(csv_path)
-    if args.stage not in columns:
-        columns.append(args.stage)
+    output_column = "nude" if args.stage == "nudenet" else args.stage
+    if output_column not in columns:
+        columns.append(output_column)
     cache, failed, processed = {}, 0, 0
     for index, row in enumerate(rows, 1):
-        if should_skip(row, args.stage, args.force):
+        if should_skip(row, output_column, args.force):
             continue
         path = Path(row.get("path", ""))
         try:
             if not path.is_file():
                 raise FileNotFoundError(path)
-            row[args.stage] = infer(args.stage, path, config, cache)
+            row[output_column] = infer(args.stage, path, config, cache)
             row["other"] = row.get("other", "")
             processed += 1
             print(f"[{index}/{len(rows)}] OK: {path}", flush=True)
