@@ -95,12 +95,9 @@ def infer(stage, path, config, cache):
         import timm
         from PIL import Image
         if "engine" not in cache:
-            model_dir = normalize_path(models.get("marqo", "models/marqo"))
-            if not (model_dir / "config.json").is_file():
-                raise FileNotFoundError(
-                    f"Marqo model missing at {model_dir}. Run install_models.py --marqo first."
-                )
-            model = timm.create_model("hf_hub:" + str(model_dir), pretrained=True).eval()
+            model = timm.create_model(
+                "hf_hub:Marqo/nsfw-image-detection-384", pretrained=True
+            ).eval()
             model.to("cpu")
             data_config = timm.data.resolve_model_data_config(model)
             cache["transform"] = timm.data.create_transform(**data_config, is_training=False)
