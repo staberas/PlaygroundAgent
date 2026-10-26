@@ -1,0 +1,16 @@
+.venv/
+.venvs/
+__pycache__/
+*.pyc
+models/
+*.onnx
+*.pt
+*.pth
+*.safetensors
+*.ckpt
+*.h5
+*.keras
+*.tflite
+imgscan.csv
+*.tmp
+.env
