@@ -75,14 +75,26 @@ def classify(row):
     # If there's no evidence for a specialist folder, choose General.
     scores["General"] = .85 + .4*tag("scenery", "landscape", "nature", "traditional_media",
                                       "still_life", "realistic", "no_humans")
-    if scores["Cosplay"] >= 1.65:
+    # Separate image medium from the subject. WD Tagger's 1girl/1boy,
+    # wig, animal_ears etc describe content, not whether it is drawn.
+    photo_evidence = max(tag("photo_(medium)", "photography_(artwork)", "real_life",
+                             "photorealistic", "live_action"), tag("cosplay") * .9)
+    illustration_evidence = tag("anime_screencap", "anime_coloring", "manga",
+                                "comic", "lineart", "illustration", "sketch")
+    costume_evidence = max(tag("cosplay", "cosplayer", "costume"),
+                           min(tag("wig", "mask", "bodysuit", "latex", "leotard") + .15,
+                               photo_evidence))
+    photo_cosplay = (photo_evidence >= .45 and costume_evidence >= .38 and
+                     illustration_evidence < .75)
+    if photo_cosplay or tag("cosplay") >= .52:
         category = "Cosplay"
     elif scores["Meme"] >= 1.7 and scores["Meme"] >= scores["Anime"]:
         category = "Meme"
-    elif scores["Anime"] >= 1.05 and scores["Anime"] > scores["General"]:
+    elif (illustration_evidence >= .45 and scores["Anime"] >= 1.05 and
+          not (photo_evidence >= .55 and illustration_evidence < .75)):
         category = "Anime"
     else:
-        category = max(scores, key=scores.get)
+        category = "General"
     if not (wolf or marqo or nsfw or nude):
         return {"destination_folder":"Review/Unclassified","route_review":"yes",
                 "route_reason":"No classification outputs","route_confidence":0.0}
@@ -90,9 +102,12 @@ def classify(row):
                f"Legacy explicit {porn:.2f}", f"anatomy {'yes' if exposed else 'no'}"]
     if disagreement: reasons.append("classifier disagreement")
     if ambiguous: reasons.append("borderline NSFW evidence")
-    if category == "General" and scores["Anime"] > .75:
-        reasons.append("category uncertain")
-    needs_review = ambiguous or disagreement or (category == "General" and scores["Anime"] > .75)
+    medium_uncertain = (category == "General" and scores["Anime"] > .75)
+    if medium_uncertain:
+        reasons.append("image medium uncertain (photo vs illustration)")
+    if photo_cosplay:
+        reasons.append("photo + costume evidence")
+    needs_review = ambiguous or disagreement or medium_uncertain
     confidence = round(min(1., abs(nsfw_score - .55)*1.3 +
                            max(0., scores[category] - sorted(scores.values())[-2])*.1), 3)
     return {"destination_folder":f"{top}/{category}",
