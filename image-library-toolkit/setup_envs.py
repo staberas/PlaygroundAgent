@@ -11,6 +11,7 @@ PACKAGES = {
     "yolo": ["ultralytics", "pillow"],
     "ocr": ["easyocr"],
     "nsfw": ["tensorflow==2.15.1", "tensorflow-hub==0.15.0", "numpy<2", "setuptools==80.9.0", "pillow"],
+    "marqo": ["torch", "torchvision", "timm", "huggingface_hub", "pillow"],
     "caption": ["torch", "transformers==4.51.0", "accelerate", "sentencepiece", "pillow"],
 }
 
