@@ -90,6 +90,27 @@ def infer(stage, path, config, cache):
             y = engine.predict(x, verbose=0)[0]
         classes = ["drawings", "hentai", "neutral", "porn", "sexy"]
         return json.dumps(dict(zip(classes, map(float, y))), ensure_ascii=False)
+    if stage == "marqo":
+        import torch
+        import timm
+        from PIL import Image
+        if "engine" not in cache:
+            model_dir = normalize_path(models.get("marqo", "models/marqo"))
+            if not (model_dir / "config.json").is_file():
+                raise FileNotFoundError(
+                    f"Marqo model missing at {model_dir}. Run install_models.py --marqo first."
+                )
+            model = timm.create_model("hf_hub:" + str(model_dir), pretrained=True).eval()
+            model.to("cpu")
+            data_config = timm.data.resolve_model_data_config(model)
+            cache["transform"] = timm.data.create_transform(**data_config, is_training=False)
+            cache["labels"] = list(model.pretrained_cfg["label_names"])
+            cache["engine"] = model
+        with Image.open(path) as source:
+            tensor = cache["transform"](source.convert("RGB")).unsqueeze(0)
+        with torch.inference_mode():
+            probabilities = cache["engine"](tensor).softmax(dim=-1)[0].cpu().tolist()
+        return json.dumps(dict(zip(cache["labels"], map(float, probabilities))), ensure_ascii=False)
     if stage == "caption":
         if "engine" not in cache:
             import torch
@@ -119,7 +140,7 @@ def infer(stage, path, config, cache):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("stage", choices=["nudenet", "yolo", "ocr", "nsfw", "caption"])
+    ap.add_argument("stage", choices=["nudenet", "yolo", "ocr", "nsfw", "marqo", "caption"])
     ap.add_argument("--csv", required=True)
     ap.add_argument("--force", action="store_true")
     args = ap.parse_args()
