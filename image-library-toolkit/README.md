@@ -11,7 +11,7 @@ A single **launcher** (`python app.py`) handles scanning, CSV editing and invoki
 - `yolo`: Ultralytics objects; writes `yolo` labels.
 - `ocr`: EasyOCR; writes extracted text.
 - `nsfw`: TensorFlow/Keras or TFLite NSFWJS model (requires local weights); five-class scores.
-- `caption`: optional JoyCaption/LLaVA model in a *separate* heavy environment; writes caption text.
+- `smilingwolf`: WD ViT Tagger v3 ratings and general/character image tags, in its own environment.
 - `rules`: generate a JSON classification summary per image, no file moves or renames.
 
 All worker stages skip ignored rows, retain existing data by default, save incrementally, and report failures without silently treating failed analysis as safe. `--force` recomputes a stage.
@@ -27,7 +27,7 @@ py -3.11 -m venv .venv
 .\.venv\Scripts\python.exe app.py
 ```
 
-Linux: replace `py -3.11` with `python3`, and `Scripts\python.exe` with `bin/python`. Install tkinter using your distribution if missing. For the optional TensorFlow or JoyCaption environments, inspect `requirements-optional.txt` and install/select compatible PyTorch/CUDA wheels yourself, then run `setup_envs.py --nsfw` or `--caption`.
+Linux: replace `py -3.11` with `python3`, and `Scripts\python.exe` with `bin/python`. Install tkinter using your distribution if missing. For the optional TensorFlow and SmilingWolf environments, inspect `requirements-optional.txt` and install/select compatible PyTorch/CUDA wheels yourself, then run `setup_envs.py --nsfw` or `--caption`.
 
 Edit `config.json` if the environment paths, model paths, or Python versions differ. All paths are relative to the project folder unless absolute. `setup_envs.py` creates `.venvs/<stage>/` and does **not** overwrite existing environments. The main app can run with only Python's standard library; `requirements-main.txt` is informational.
 
@@ -96,3 +96,20 @@ Uses the official [Marqo/nsfw-image-detection-384](https://huggingface.co/Marqo/
 ```
 
 Outputs JSON probabilities `{"NSFW": ..., "SFW": ...}` into the new `marqo` CSV column. The review rules flag Marqo NSFW >= 0.75 as **suggestive/review**, not automatically explicit, alongside the previous NudeNet and legacy NSFW checks. For repeat scans, completed rows are skipped unless `--force` is used. Marqo's scores are not calibrated against your dataset; visually review disagreements.
+
+## SmilingWolf (replaces caption)
+
+The **JoyCaption** stage has been removed from the active application because the heavyweight model offloaded to RAM/disk and the chat template failed. Existing `caption` CSV data is preserved as a legacy column, but new scans use `smilingwolf`.
+
+```powershell
+.\.venv\Scripts\python.exe setup_envs.py --smilingwolf
+.\.venv\Scripts\python.exe install_models.py --smilingwolf
+.\.venv\Scripts\python.exe app.py run smilingwolf
+.\.venv\Scripts\python.exe app.py rules
+```
+
+This uses [SmilingWolf/wd-vit-tagger-v3](https://huggingface.co/SmilingWolf/wd-vit-tagger-v3), including its official `selected_tags.csv` for reliable tag/category mapping. Category IDs 9=rating, 0=general, 4=character. Outputs `ratings`, `general_tags`, and `character_tags`. The output is cached in your scan CSV and weights in Hugging Face's local cache. SmilingWolf is Danbooru-focused; photographic classification should still use Marqo/NudeNet.
+
+## Faster OCR
+
+By default OCR uses CUDA GPU **only when the installed torch supports CUDA**, otherwise CPU. A normal AMD Radeon GPU on Windows does **not** enable CUDA, so CPU fallback is expected. To see the selected backend run `app.py run ocr --force`; the worker prints it at startup. OCR settings in `config.json`: `ocr_gpu` ("auto", "false", "true"), `ocr_canvas_size` (1280 by default vs EasyOCR's larger standard), `ocr_batch_size` (4), `ocr_mag_ratio` (1.0), and OCR detection thresholds. Reducing the canvas size accelerates processing of large images but may miss very small text. For NVIDIA CUDA, install CUDA-enabled PyTorch *inside* `.venvs/ocr` following [official EasyOCR installation](https://jaided.ai/easyocr/install/). Re-run OCR with `--force` to benchmark changed settings against existing entries.
