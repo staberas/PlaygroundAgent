@@ -72,3 +72,14 @@ For the five-category NSFW model (legacy GantMan MobileNet v2), download the ver
 The installer sources NSFW weights from the original maintainer's historical S3 URL. Keep `models/nsfw_mobilenet2.224x224.h5` out of Git. This is an older Keras/HDF5 model and modern TensorFlow/Keras installations **may reject its serialization**; in that case capture the traceback so we can pin a compatible version, rather than changing model formats blindly.
 
 **Existing CSV migration:** Older runs wrote NudeNet output under the unintended `nudenet` column while rules only read `nude`. The rules now read both, preferring `nude`. Fresh NudeNet runs write to `nude` and `--force` recomputes them. Previously exported `.rules.json` is stale until you run `app.py rules` again. In the uploaded 48-row sample, `nudenet` contains 48 populated results while `nude` and `nsfw` are entirely empty.
+
+### NSFW legacy KerasLayer fix
+
+The 54-image log showed NSFW model deserialization failing with `Unknown layer: 'KerasLayer'`. The worker now registers `tensorflow_hub.KerasLayer` as a custom object. The NSFW environment is pinned to `tensorflow==2.15.1` with `tensorflow-hub==0.15.0` and `numpy<2` for its legacy HDF5 architecture. This is a compatibility attempt based on the model's TensorFlow Hub layer, not yet machine-tested. Upgrade the *existing isolated NSFW environment* with:
+
+```powershell
+.\.venv\Scripts\python.exe setup_envs.py --nsfw
+.\.venv\Scripts\python.exe app.py run nsfw
+```
+
+The runner now stops after the first model-initialization error instead of logging the same error for each image.
