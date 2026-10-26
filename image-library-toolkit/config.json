@@ -4,16 +4,19 @@
     "yolo": ".venvs/yolo",
     "ocr": ".venvs/ocr",
     "nsfw": ".venvs/nsfw",
-    "caption": ".venvs/caption"
+    "caption": ".venvs/caption",
+    "marqo": ".venvs/marqo"
   },
   "models": {
     "yolo": "models/yolo.pt",
     "nsfw": "models/nsfw_mobilenet2.224x224.h5",
-    "caption": "models/joycaption"
+    "caption": "models/joycaption",
+    "marqo": "models/marqo"
   },
   "settings": {
     "nudenet_threshold": 0.35,
     "caption_prompt": "Describe this image in one detailed, factual sentence. Avoid introductory phrases.",
-    "caption_max_tokens": 160
+    "caption_max_tokens": 160,
+    "marqo_threshold": 0.5
   }
 }
