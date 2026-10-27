@@ -5,7 +5,7 @@ import subprocess
 import sys
 import threading
 from pathlib import Path
-from pipeline import ROOT, COLUMNS, read_rows, write_rows, scan, rules
+from pipeline import ROOT, COLUMNS, read_rows, write_rows, scan, rules, rename_jfif_to_jpg
 from sorter import assign
 
 DEFAULT_CSV = ROOT / "imgscan.csv"
@@ -46,6 +46,17 @@ def gui(csv_path):
     status = tk.StringVar(value="Ready")
     stage = tk.StringVar(value="nudenet")
     force = tk.BooleanVar()
+    config_path = ROOT / "config.json"
+    config = json.loads(config_path.read_text(encoding="utf-8"))
+    cosplay_nsfw = tk.BooleanVar(value=bool(config.get("settings", {}).get("cosplay_force_nsfw", False)))
+    def save_cosplay_toggle():
+        try:
+            current = json.loads(config_path.read_text(encoding="utf-8"))
+            current.setdefault("settings", {})["cosplay_force_nsfw"] = cosplay_nsfw.get()
+            config_path.write_text(json.dumps(current, indent=2) + "\\n", encoding="utf-8")
+            note("Cosplay NSFW override " + ("enabled" if cosplay_nsfw.get() else "disabled") + ". Click Assign folders to recompute.")
+        except Exception as exc:
+            messagebox.showerror("Settings error", str(exc))
     top = ttk.Frame(window, padding=8)
     top.pack(fill="x")
     ttk.Label(top, text="Folder").pack(side="left")
@@ -121,6 +132,28 @@ def gui(csv_path):
         except Exception as exc:
             messagebox.showerror("Assignment failed", str(exc))
     ttk.Button(controls, text="Assign folders", command=do_assign).pack(side="left", padx=6)
+    ttk.Checkbutton(controls, text="Cosplay always NSFW", variable=cosplay_nsfw,
+                    command=save_cosplay_toggle).pack(side="left", padx=6)
+    def do_jfif_rename():
+        rows, _ = read_rows(csv_path)
+        n = sum(Path(row.get("path", "")).suffix.lower() == ".jfif" for row in rows)
+        if not n:
+            messagebox.showinfo("JFIF rename", "No .jfif files are listed.")
+            return
+        if not messagebox.askyesno("Rename JFIF to JPG",
+                 f"Rename up to {n} listed .jfif files to .jpg?\\nThis changes disk filenames and CSV paths; existing .jpg files are never overwritten."):
+            return
+        try:
+            count, skipped = rename_jfif_to_jpg(csv_path)
+            refresh()
+            note(f"JFIF rename: {count} renamed, {len(skipped)} skipped.")
+            for item in skipped:
+                note("SKIPPED: " + item)
+            messagebox.showinfo("JFIF rename", f"{count} renamed, {len(skipped)} skipped. Check the log for details.")
+        except Exception as exc:
+            refresh()
+            messagebox.showerror("JFIF rename failed", str(exc))
+    ttk.Button(controls, text="JFIF → JPG", command=do_jfif_rename).pack(side="left", padx=6)
     def produce_rules():
         try:
             note(f"Rules written to {rules(csv_path)}")
