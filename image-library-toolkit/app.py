@@ -53,7 +53,7 @@ def gui(csv_path):
         try:
             current = json.loads(config_path.read_text(encoding="utf-8"))
             current.setdefault("settings", {})["cosplay_force_nsfw"] = cosplay_nsfw.get()
-            config_path.write_text(json.dumps(current, indent=2) + "\\n", encoding="utf-8")
+            config_path.write_text(json.dumps(current, indent=2) + "\n", encoding="utf-8")
             note("Cosplay NSFW override " + ("enabled" if cosplay_nsfw.get() else "disabled") + ". Click Assign folders to recompute.")
         except Exception as exc:
             messagebox.showerror("Settings error", str(exc))
@@ -141,7 +141,7 @@ def gui(csv_path):
             messagebox.showinfo("JFIF rename", "No .jfif files are listed.")
             return
         if not messagebox.askyesno("Rename JFIF to JPG",
-                 f"Rename up to {n} listed .jfif files to .jpg?\\nThis changes disk filenames and CSV paths; existing .jpg files are never overwritten."):
+                 f"Rename up to {n} listed .jfif files to .jpg?\nThis changes disk filenames and CSV paths; existing .jpg files are never overwritten."):
             return
         try:
             count, skipped = rename_jfif_to_jpg(csv_path)
