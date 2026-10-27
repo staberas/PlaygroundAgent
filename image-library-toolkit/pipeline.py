@@ -59,6 +59,39 @@ def scan(folder, csv_path, recursive=False):
     write_rows(csv_path, rows, columns)
     return len(rows)
 
+
+def rename_jfif_to_jpg(csv_path):
+    """Rename only listed .jfif files, without converting bytes or overwriting JPGs.
+
+    Persist CSV after each successful rename to keep paths synchronized.
+    Returns (renamed, skipped_messages).
+    """
+    rows, columns = read_rows(csv_path)
+    renamed, skipped = 0, []
+    for row in rows:
+        src = Path(row.get("path", ""))
+        if src.suffix.lower() != ".jfif":
+            continue
+        if not src.is_file():
+            skipped.append(f"Missing file: {src}")
+            continue
+        dst = src.with_suffix(".jpg")
+        # Windows names are case insensitive. Avoid replacing any existing file.
+        if dst.exists():
+            skipped.append(f"Destination exists: {dst}")
+            continue
+        try:
+            src.rename(dst)
+        except OSError as exc:
+            skipped.append(f"Could not rename {src}: {exc}")
+            continue
+        row["path"] = str(dst)
+        row["filename"] = dst.name
+        row["extension"] = ".jpg"
+        write_rows(csv_path, rows, columns)
+        renamed += 1
+    return renamed, skipped
+
 def rules(csv_path):
     rows, _ = read_rows(csv_path)
     output = []
