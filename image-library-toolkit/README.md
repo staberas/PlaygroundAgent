@@ -121,3 +121,8 @@ Run `python app.py assign` or click **Assign folders**. Routes each unignored im
 Routing uses available existing scores from NudeNet, legacy NSFW classifier, Marqo and WD Tagger. Explicit anatomy, strong WD explicit/questionable ratings, and agreement across models weigh more than Marqo alone. For borderline or conflicting predictions, `route_review=yes` requests inspection. Subcategory classification relies on high-confidence relevant WD tags; cosplay requires costume/photo evidence, memes require text/screenshot or meme evidence, and anime uses character/illustration signals. Remaining images default to General.
 
 This is a **heuristic prototype**; thresholds were not statistically calibrated. `route_confidence` is a heuristic ranking, **not a probability**. Always manually review decisions before building a future file mover; even `SFW` predictions can contain mistakes. Existing CSV data and legacy columns are retained.
+
+## Windows GUI controls
+
+- **JFIF → JPG**: with confirmation, renames only the `.jfif` files currently listed in the CSV. It changes the extension, not image encoding, and updates `path`, `filename`, and `extension` incrementally. Missing sources, existing destination names and rename failures are skipped and logged. This operation modifies real files and does not touch entries absent from the CSV.
+- **Cosplay always NSFW**: persists `settings.cosplay_force_nsfw` in `config.json`. It takes effect on the next **Assign folders** click; it never moves files automatically. The setting is restored when the GUI restarts.
