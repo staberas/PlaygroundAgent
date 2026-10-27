@@ -26,6 +26,7 @@
     "ocr_batch_size": 4,
     "ocr_text_threshold": 0.7,
     "ocr_low_text": 0.4,
-    "ocr_link_threshold": 0.4
+    "ocr_link_threshold": 0.4,
+    "cosplay_force_nsfw": false
   }
 }
